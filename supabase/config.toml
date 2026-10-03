@@ -1,0 +1,12 @@
+# AeroPulse · réglages Supabase des fonctions serveur.
+# Les tâches planifiées s'authentifient avec le secret CRON_SECRET (en-tête x-cron-secret),
+# pas avec un jeton utilisateur ; l'import exige un utilisateur connecté.
+
+[functions.ingest-metar]
+verify_jwt = false
+
+[functions.sync-flights]
+verify_jwt = false
+
+[functions.import-flights]
+verify_jwt = true

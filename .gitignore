@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.*
+supabase/.temp/
+supabase/.branches/
+tests/e2e/fixture.json
+*.png

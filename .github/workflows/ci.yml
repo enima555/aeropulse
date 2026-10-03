@@ -1,0 +1,19 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: PostgreSQL 16
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq postgresql-16
+          echo "PGBIN=/usr/lib/postgresql/16/bin" >> "$GITHUB_ENV"
+      - name: Navigateur de test
+        run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Tests (unitaires, base de données, navigateur)
+        run: |
+          sudo chown -R "$(whoami)" /var/run/postgresql || true
+          ./tests/run_all.sh

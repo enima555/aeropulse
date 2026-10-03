@@ -1,0 +1,3 @@
+flight_no;airline_iata;airline_name;dep;arr;std;sta;etd;eta;atd;takeoff;landing;ata;status;aircraft_type;registration;seats;pax;dep_terminal;dep_gate;arr_terminal;delay_codes
+SX312;SX;Seine Air;LFPO;LPPT;2026-10-03T07:40+02:00;2026-10-03T09:10+01:00;;;2026-10-03T07:52+02:00;2026-10-03T08:05+02:00;;;;B738;F-HSXA;189;171;1;12;;93:12
+LB6105;LB;Ligne Bleue;NCE;ORY;2026-10-03T08:15+02:00;2026-10-03T09:40+02:00;;2026-10-03T09:35+02:00;;;;;;A320;F-HLBC;180;;;;2;
