@@ -616,7 +616,7 @@ function frErr(e){var m=(e&&(e.message||e.error_description))||String(e);
 function boot(){
   if(!CFG.supabaseUrl||!CFG.supabaseAnonKey){startDemo();return;}
   main.innerHTML='<p class="note">Connexion…</p>';
-  loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js").then(function(){
+  loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js").then(function(){
     if(!window.supabase||!window.supabase.createClient)throw new Error("Bibliothèque de connexion indisponible.");
     SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey);
     return SB.auth.getSession();

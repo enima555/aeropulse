@@ -9,4 +9,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.import-flights]
-verify_jwt = true
+# Le jeton utilisateur est vérifié dans le code (sb.auth.getUser), compatible avec les nouvelles clés.
+verify_jwt = false
+
+[functions.seed-airports]
+verify_jwt = false

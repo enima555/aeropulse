@@ -1,11 +1,11 @@
 // AeroPulse · Collecte des METAR réels (aviationweather.gov, gratuit, sans clé).
-// Appelée toutes les 10 minutes par la tâche planifiée (voir supabase/cron.sql).
+// Appelée toutes les 10 minutes par la tâche planifiée (migration *_cron_jobs_and_demo_tenant.sql).
 // Limites de la source : 100 requêtes/min au total, appels serveur uniquement.
 import { metarRowsFromAwc } from "../_shared/metar.ts";
 import { checkCronSecret, json, serviceClient } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
-  if (!checkCronSecret(req)) return json(req, { error: "Accès refusé" }, 401);
+  if (!(await checkCronSecret(req))) return json(req, { error: "Accès refusé" }, 401);
   const sb = serviceClient();
 
   const { data: st, error } = await sb.from("watched_stations").select("station");

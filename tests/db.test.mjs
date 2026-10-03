@@ -24,6 +24,7 @@ const lit = (s) => "'" + String(s).replace(/'/g, "''") + "'";
 let rows;
 before(() => {
   sql(`delete from flights; delete from memberships; delete from tenants;
+       insert into auth.users (id, email) values (${lit(UA)}, 'a@test.fr'), (${lit(UB)}, 'b@test.fr') on conflict do nothing;
        insert into tenants (id, name, kind, home_airport) values (${lit(T1)}, 'Démo Orly', 'demo', 'LFPO'), (${lit(T2)}, 'Autre client', 'airline', 'DAAG');
        insert into memberships (tenant_id, user_id, role) values (${lit(T1)}, ${lit(UA)}, 'admin'), (${lit(T2)}, ${lit(UB)}, 'viewer');`);
   const ap = JSON.parse(sql(`select json_agg(json_build_array(icao, iata)) from airports`));

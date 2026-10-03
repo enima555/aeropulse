@@ -1,8 +1,6 @@
 -- AeroPulse · Clients (multi-tenant), rôles, vols, météo, imports
 -- Chaque client (compagnie, aéroport ou démo) ne voit que ses propres vols.
 
-create extension if not exists pgcrypto;
-
 -- ---------- Clients et rôles ----------
 create table if not exists public.tenants (
   id            uuid primary key default gen_random_uuid(),
@@ -15,7 +13,7 @@ create table if not exists public.tenants (
 
 create table if not exists public.memberships (
   tenant_id   uuid not null references public.tenants(id) on delete cascade,
-  user_id     uuid not null,
+  user_id     uuid not null references auth.users(id) on delete cascade,
   role        text not null check (role in ('admin','editor','viewer')),
   created_at  timestamptz not null default now(),
   primary key (tenant_id, user_id)
@@ -23,14 +21,16 @@ create table if not exists public.memberships (
 create index if not exists memberships_user_idx on public.memberships (user_id);
 
 -- Vrai si l'utilisateur connecté a au moins le rôle demandé chez ce client.
+-- Appelable par les utilisateurs connectés (utilisé par la RLS et la fonction d'import) :
+-- elle ne révèle que les droits de l'utilisateur lui-même.
 create or replace function public.has_role(p_tenant uuid, p_min text)
 returns boolean
-language sql stable security definer set search_path = public
+language sql stable security definer set search_path = ''
 as $$
   select exists (
     select 1 from public.memberships m
     where m.tenant_id = p_tenant
-      and m.user_id = auth.uid()
+      and m.user_id = (select auth.uid())
       and (case m.role when 'admin' then 3 when 'editor' then 2 else 1 end)
           >= (case p_min when 'admin' then 3 when 'editor' then 2 else 1 end)
   );
@@ -72,10 +72,11 @@ create table if not exists public.flights (
 create index if not exists flights_dep_idx on public.flights (tenant_id, dep_airport, std);
 create index if not exists flights_arr_idx on public.flights (tenant_id, arr_airport, sta);
 create index if not exists flights_updated_idx on public.flights (tenant_id, updated_at);
+create index if not exists flights_dep_fk_idx on public.flights (dep_airport);
+create index if not exists flights_arr_fk_idx on public.flights (arr_airport);
 
 create or replace function public.touch_updated_at() returns trigger
-language plpgsql as $$ begin new.updated_at := now(); return new; end $$;
-drop trigger if exists flights_touch on public.flights;
+language plpgsql set search_path = '' as $$ begin new.updated_at := now(); return new; end $$;
 create trigger flights_touch before update on public.flights
   for each row execute function public.touch_updated_at();
 
@@ -105,6 +106,8 @@ create table if not exists public.sync_jobs (
   last_run_at timestamptz,
   last_status text
 );
+create index if not exists sync_jobs_tenant_idx on public.sync_jobs (tenant_id);
+create index if not exists sync_jobs_airport_idx on public.sync_jobs (airport);
 create table if not exists public.import_runs (
   id             uuid primary key default gen_random_uuid(),
   tenant_id      uuid not null references public.tenants(id) on delete cascade,
@@ -115,6 +118,8 @@ create table if not exists public.import_runs (
   errors         jsonb not null default '[]'::jsonb,
   created_at     timestamptz not null default now()
 );
+create index if not exists import_runs_tenant_idx on public.import_runs (tenant_id);
+create index if not exists tenants_home_idx on public.tenants (home_airport);
 
 -- ---------- Sécurité : règles d'accès (RLS) ----------
 alter table public.airports        enable row level security;
@@ -136,28 +141,32 @@ create policy wx_read            on public.metar_obs       for select to authent
 create policy wx_read_stations   on public.watched_stations for select to authenticated using (true);
 
 -- Clients : visibles par leurs membres, modifiables par leurs admins.
-create policy tenant_read   on public.tenants for select to authenticated using (public.has_role(id, 'viewer'));
-create policy tenant_update on public.tenants for update to authenticated using (public.has_role(id, 'admin')) with check (public.has_role(id, 'admin'));
+create policy tenant_read   on public.tenants for select to authenticated using ((select public.has_role(id, 'viewer')));
+create policy tenant_update on public.tenants for update to authenticated using ((select public.has_role(id, 'admin'))) with check ((select public.has_role(id, 'admin')));
 
 -- Rôles : chacun voit les siens ; les admins gèrent ceux de leur client.
-create policy member_read   on public.memberships for select to authenticated using (user_id = auth.uid() or public.has_role(tenant_id, 'admin'));
-create policy member_insert on public.memberships for insert to authenticated with check (public.has_role(tenant_id, 'admin'));
-create policy member_update on public.memberships for update to authenticated using (public.has_role(tenant_id, 'admin')) with check (public.has_role(tenant_id, 'admin'));
-create policy member_delete on public.memberships for delete to authenticated using (public.has_role(tenant_id, 'admin'));
+create policy member_read   on public.memberships for select to authenticated using (user_id = (select auth.uid()) or (select public.has_role(tenant_id, 'admin')));
+create policy member_insert on public.memberships for insert to authenticated with check ((select public.has_role(tenant_id, 'admin')));
+create policy member_update on public.memberships for update to authenticated using ((select public.has_role(tenant_id, 'admin'))) with check ((select public.has_role(tenant_id, 'admin')));
+create policy member_delete on public.memberships for delete to authenticated using ((select public.has_role(tenant_id, 'admin')));
 
 -- Vols : lecture pour les membres, écriture pour éditeurs et admins.
-create policy flights_read   on public.flights for select to authenticated using (public.has_role(tenant_id, 'viewer'));
-create policy flights_insert on public.flights for insert to authenticated with check (public.has_role(tenant_id, 'editor'));
-create policy flights_update on public.flights for update to authenticated using (public.has_role(tenant_id, 'editor')) with check (public.has_role(tenant_id, 'editor'));
-create policy flights_delete on public.flights for delete to authenticated using (public.has_role(tenant_id, 'admin'));
+create policy flights_read   on public.flights for select to authenticated using ((select public.has_role(tenant_id, 'viewer')));
+create policy flights_insert on public.flights for insert to authenticated with check ((select public.has_role(tenant_id, 'editor')));
+create policy flights_update on public.flights for update to authenticated using ((select public.has_role(tenant_id, 'editor'))) with check ((select public.has_role(tenant_id, 'editor')));
+create policy flights_delete on public.flights for delete to authenticated using ((select public.has_role(tenant_id, 'admin')));
 
-create policy sync_read     on public.sync_jobs   for select to authenticated using (public.has_role(tenant_id, 'admin'));
-create policy imports_read  on public.import_runs for select to authenticated using (public.has_role(tenant_id, 'viewer'));
-create policy imports_write on public.import_runs for insert to authenticated with check (public.has_role(tenant_id, 'editor'));
+create policy sync_read     on public.sync_jobs   for select to authenticated using ((select public.has_role(tenant_id, 'admin')));
+create policy imports_read  on public.import_runs for select to authenticated using ((select public.has_role(tenant_id, 'viewer')));
+create policy imports_write on public.import_runs for insert to authenticated with check ((select public.has_role(tenant_id, 'editor')));
 
+revoke all on all tables in schema public from anon;
+revoke all on public.airports, public.delay_codes, public.aircraft_types, public.metar_obs, public.watched_stations, public.metar_latest,
+              public.tenants, public.memberships, public.flights, public.sync_jobs, public.import_runs from authenticated;
 grant select on public.airports, public.delay_codes, public.aircraft_types, public.metar_obs, public.watched_stations, public.metar_latest to authenticated;
 grant select, update on public.tenants to authenticated;
 grant select, insert, update, delete on public.memberships, public.flights to authenticated;
 grant select on public.sync_jobs to authenticated;
 grant select, insert on public.import_runs to authenticated;
-revoke all on all tables in schema public from anon;
+revoke execute on function public.has_role(uuid, text) from public, anon;
+grant execute on function public.has_role(uuid, text) to authenticated;

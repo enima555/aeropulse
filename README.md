@@ -28,36 +28,33 @@ aviationweather.gov       ─────► ingest-metar   ─┘   + règles d
 | `web/` | L'application. `config.js` contient l'URL et la clé publique Supabase. |
 | `supabase/migrations/` | Schéma, référentiel, sécurité, fonctions KPI. |
 | `supabase/functions/` | Fonctions serveur : import CSV, synchronisation des vols, météo. |
-| `supabase/cron.sql` | Planification des collectes. |
-| `supabase/seed_demo.sql` | Premier client et premier administrateur. |
+| `supabase/seed_demo.sql` | Rattacher un utilisateur à un client, activer la synchro des vols. |
 | `docs/` | Définitions des KPI, format d'import. |
 | `samples/` | Modèle CSV et jeu de démonstration (128 vols). |
 | `tests/` | Tests unitaires, base de données (parité, sécurité), navigateur. |
 
-## Mise en service
+## Installation actuelle
 
-Prérequis : un compte GitHub, un compte Supabase et le compte Netlify existant. Pour la ligne de commande, il faut le [Supabase CLI](https://supabase.com/docs/guides/cli).
+| Élément | Valeur |
+|---|---|
+| Projet Supabase | `aeropulse` (`pfkteqdngzmlydueulyj`), région Paris (eu-west-3), offre gratuite |
+| URL de l'API | https://pfkteqdngzmlydueulyj.supabase.co |
+| Fonctions serveur | `ingest-metar`, `sync-flights`, `import-flights`, `seed-airports` |
+| Collectes planifiées | météo toutes les 10 min (`aeropulse-metar`), vols toutes les 5 min (`aeropulse-flights`) |
+| Secrets | dans Supabase Vault : `cron_secret` (généré), `project_url`, `aerodatabox_key` (à ajouter) |
+| Site Netlify | `aeropulse-app` → https://aeropulse-app.netlify.app |
+| Client de démonstration | « Démo Paris-Orly » (LFPO), synchronisé dès que la clé AeroDataBox est ajoutée |
 
-1. **Créer le projet Supabase** (région Europe, par exemple Paris ou Francfort). Notez l'identifiant du projet, l'URL, la clé `anon` et la clé `service_role` (Project Settings → API).
-2. **Appliquer le schéma** :
-   ```
-   supabase login
-   supabase link --project-ref <identifiant>
-   supabase db push
-   ```
-3. **Définir les secrets des fonctions serveur** puis les déployer :
-   ```
-   supabase secrets set CRON_SECRET=<longue valeur aléatoire> ALLOWED_ORIGINS=https://<votre-site>.netlify.app
-   supabase secrets set AERODATABOX_KEY=<clé RapidAPI>      # seulement si vous activez la synchro API
-   supabase functions deploy ingest-metar
-   supabase functions deploy sync-flights
-   supabase functions deploy import-flights
-   ```
-4. **Planifier les collectes** : ouvrez `supabase/cron.sql`, remplacez `<PROJECT_REF>` et `<CRON_SECRET>`, puis exécutez le fichier dans l'éditeur SQL.
-5. **Créer le premier utilisateur** (Authentication → Users → Add user). Exécutez ensuite `supabase/seed_demo.sql` en remplaçant l'e-mail.
-6. **Configurer l'application** : renseignez `supabaseUrl` et `supabaseAnonKey` dans `web/config.js`. La clé anon est publique par conception, la sécurité repose sur les règles d'accès.
-7. **Déployer sur Netlify** : reliez le dépôt GitHub au site. `netlify.toml` publie le dossier `web/` avec les en-têtes de sécurité.
-8. **Côté Supabase** : dans Authentication → URL Configuration, mettez l'adresse Netlify comme Site URL, pour les liens de connexion par e-mail.
+Les secrets ne passent jamais par des variables d'environnement à recopier : les tâches planifiées et les fonctions serveur les lisent dans Vault (fonctions SQL `call_function` et `get_setting`, réservées au serveur).
+
+## Installer sur un nouveau projet Supabase
+
+1. Créer le projet, puis appliquer les migrations : `supabase link --project-ref <id>` puis `supabase db push`. Dans `*_settings_vault.sql`, remplacez d'abord l'URL du projet.
+2. Déployer les fonctions : `supabase functions deploy ingest-metar sync-flights import-flights seed-airports`.
+3. Charger le référentiel des aéroports, dans l'éditeur SQL : `select public.call_function('seed-airports', 120000);`.
+4. Créer un utilisateur (Authentication → Users → Add user), puis le rattacher à un client avec `supabase/seed_demo.sql`.
+5. Renseigner `web/config.js` (URL et clé publishable), puis déployer le dossier `web/` sur Netlify.
+6. Dans Authentication → URL Configuration, mettre l'adresse du site comme Site URL (pour les liens de connexion par e-mail).
 
 ## Données de vol
 
@@ -80,6 +77,8 @@ Les mêmes tests tournent sur GitHub à chaque modification (`.github/workflows/
 
 ## Avant le premier client payant
 
+- [ ] Déplacer l'extension pg_net du schéma public vers `extensions` (avertissement de l'audit Supabase).
+- [ ] Restreindre les origines autorisées des fonctions serveur (secret `ALLOWED_ORIGINS` = adresse du site).
 - [ ] Passer Supabase en offre Pro (25 $/mois) : sauvegardes quotidiennes, pas de mise en pause. L'offre gratuite met le projet en pause après 7 jours d'inactivité.
 - [ ] Activer la double authentification (Authentication → MFA) et désactiver les inscriptions publiques (les comptes sont créés par vous).
 - [ ] Avoir un projet Supabase de préproduction distinct, pour tester les migrations avant la production.

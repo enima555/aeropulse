@@ -5,11 +5,11 @@
 
 -- Heure réelle de départ du poste : AOBT, ou à défaut décollage − 10 min (convention documentée).
 create or replace function public.actual_off(f public.flights) returns timestamptz
-language sql immutable as $$ select coalesce(f.atd, f.takeoff - interval '10 minutes') $$;
+language sql immutable set search_path = '' as $$ select coalesce(f.atd, f.takeoff - interval '10 minutes') $$;
 
 -- Heure réelle d'arrivée au poste : AIBT, ou à défaut atterrissage + 5 min.
 create or replace function public.actual_in(f public.flights) returns timestamptz
-language sql immutable as $$ select coalesce(f.ata, f.landing + interval '5 minutes') $$;
+language sql immutable set search_path = '' as $$ select coalesce(f.ata, f.landing + interval '5 minutes') $$;
 
 create or replace function public.kpi_summary(
   p_tenant  uuid,
@@ -133,8 +133,7 @@ begin
 end
 $$;
 
+revoke execute on function public.kpi_summary(uuid, text, date, timestamptz, text) from public, anon;
+revoke execute on function public.kpi_by_airline(uuid, text, date, timestamptz) from public, anon;
 grant execute on function public.kpi_summary(uuid, text, date, timestamptz, text) to authenticated;
 grant execute on function public.kpi_by_airline(uuid, text, date, timestamptz) to authenticated;
-grant execute on function public.has_role(uuid, text) to authenticated;
-revoke execute on function public.kpi_summary(uuid, text, date, timestamptz, text) from anon;
-revoke execute on function public.kpi_by_airline(uuid, text, date, timestamptz) from anon;

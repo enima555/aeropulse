@@ -1,16 +1,16 @@
 // AeroPulse · Synchronisation des vols depuis un fournisseur de données (AeroDataBox).
-// Appelée toutes les 5 minutes par la tâche planifiée (voir supabase/cron.sql).
+// Appelée toutes les 5 minutes par la tâche planifiée (migration *_cron_jobs_and_demo_tenant.sql).
 // Pour chaque ligne active de sync_jobs : départs et arrivées de -2 h à +10 h (heure locale).
-// Secret requis : AERODATABOX_KEY (clé RapidAPI). Coût : 1 appel FIDS par aéroport et par passage.
+// Secret requis : aerodatabox_key dans Supabase Vault (ou variable AERODATABOX_KEY). Coût : 1 appel FIDS par aéroport et par passage.
 import { adbAirports, adbToFlights, localStamp, type AdbResponse } from "../_shared/aerodatabox.ts";
-import { checkCronSecret, json, serviceClient } from "../_shared/http.ts";
+import { checkCronSecret, getSetting, json, serviceClient } from "../_shared/http.ts";
 
 const HOST = Deno.env.get("AERODATABOX_HOST") ?? "aerodatabox.p.rapidapi.com";
 
 Deno.serve(async (req) => {
-  if (!checkCronSecret(req)) return json(req, { error: "Accès refusé" }, 401);
-  const key = Deno.env.get("AERODATABOX_KEY");
-  if (!key) return json(req, { error: "Secret AERODATABOX_KEY absent : synchronisation désactivée" }, 503);
+  if (!(await checkCronSecret(req))) return json(req, { error: "Accès refusé" }, 401);
+  const key = await getSetting("aerodatabox_key", "AERODATABOX_KEY");
+  if (!key) return json(req, { ok: true, note: "Clé AeroDataBox absente (secret aerodatabox_key) : synchronisation en attente" });
   const sb = serviceClient();
 
   const { data: jobs, error } = await sb.from("sync_jobs").select("id, tenant_id, airport, airports(tz)").eq("enabled", true).eq("provider", "aerodatabox");

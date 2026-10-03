@@ -10,7 +10,9 @@ DIR=$(mktemp -d)
 trap '"$PGBIN/pg_ctl" -D "$DIR/data" stop >/dev/null; rm -rf "$DIR"' EXIT
 export PGHOST=$DIR PGPORT=55433 PGUSER=$(whoami) PGDATABASE=aeropulse
 createdb aeropulse
-for f in tests/local_bootstrap.sql supabase/migrations/*.sql; do psql -q -v ON_ERROR_STOP=1 -f "$f" >/dev/null; done
+for f in tests/local_bootstrap.sql supabase/migrations/*_reference.sql tests/airports_seed.sql supabase/migrations/*_tenancy_flights.sql supabase/migrations/*_kpi.sql supabase/migrations/*_airports_tz_curfew.sql; do
+  psql -q -v ON_ERROR_STOP=1 -f "$f" >/dev/null
+done   # les migrations Vault / pg_cron / pg_net ne s'appliquent que sur Supabase
 echo "== Tests unitaires"; node --experimental-strip-types --no-warnings --test tests/unit.test.mjs
 echo "== Tests base de données"; node --experimental-strip-types --no-warnings --test tests/db.test.mjs
 if node -e "require.resolve('playwright')" 2>/dev/null || [ -d /opt/npm-tools/node_modules/playwright ]; then

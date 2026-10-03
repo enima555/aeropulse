@@ -1,4 +1,4 @@
--- AeroPulse · Référentiel des aéroports à vols réguliers
+-- AeroPulse · Référentiel des aéroports pour les tests locaux (en production : fonction seed-airports)
 -- Source : OurAirports (domaine public), https://ourairports.com/data/ — 3989 aéroports.
 insert into public.airports (icao, iata, name, city, country, continent, lat, lon) values
 ('PPIT','NUP','Nunapitchuk Airport','Nunapitchuk','US','NA',60.9056,-162.4405),
@@ -3992,54 +3992,4 @@ insert into public.airports (icao, iata, name, city, country, continent, lat, lo
 ('ZYYK','YKH','Yingkou Lanqi Airport','Yingkou (Laobian)','CN','AS',40.5425,122.3586)
 on conflict (icao) do update set iata = excluded.iata, name = excluded.name, city = excluded.city, country = excluded.country, continent = excluded.continent, lat = excluded.lat, lon = excluded.lon;
 
--- Fuseaux horaires des aéroports suivis (les autres sont complétés par la synchronisation API).
-update public.airports set tz = 'Europe/Paris' where icao = 'LFPO';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFPG';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFML';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFMN';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFLL';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFBO';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFBD';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFRS';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFKJ';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFKB';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFMT';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFBZ';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFRB';
-update public.airports set tz = 'Europe/Paris' where icao = 'LFMP';
-update public.airports set tz = 'Africa/Algiers' where icao = 'DAAG';
-update public.airports set tz = 'Africa/Algiers' where icao = 'DAOO';
-update public.airports set tz = 'Africa/Algiers' where icao = 'DABC';
-update public.airports set tz = 'Africa/Algiers' where icao = 'DAUH';
-update public.airports set tz = 'Africa/Algiers' where icao = 'DAAT';
-update public.airports set tz = 'Africa/Tunis' where icao = 'DTTA';
-update public.airports set tz = 'Africa/Tunis' where icao = 'DTTJ';
-update public.airports set tz = 'Africa/Casablanca' where icao = 'GMMN';
-update public.airports set tz = 'Africa/Casablanca' where icao = 'GMMX';
-update public.airports set tz = 'Europe/Lisbon' where icao = 'LPPT';
-update public.airports set tz = 'Europe/Lisbon' where icao = 'LPPR';
-update public.airports set tz = 'Europe/Lisbon' where icao = 'LPFR';
-update public.airports set tz = 'Europe/Madrid' where icao = 'LEMD';
-update public.airports set tz = 'Europe/Madrid' where icao = 'LEBL';
-update public.airports set tz = 'Europe/Madrid' where icao = 'LEMG';
-update public.airports set tz = 'Europe/Rome' where icao = 'LIRF';
-update public.airports set tz = 'Europe/London' where icao = 'EGLL';
-update public.airports set tz = 'Europe/Amsterdam' where icao = 'EHAM';
-update public.airports set tz = 'Europe/Berlin' where icao = 'EDDF';
-update public.airports set tz = 'Europe/Brussels' where icao = 'EBBR';
-update public.airports set tz = 'Europe/Istanbul' where icao = 'LTFM';
-update public.airports set tz = 'Asia/Dubai' where icao = 'OMDB';
-update public.airports set tz = 'Asia/Riyadh' where icao = 'OEJN';
-update public.airports set tz = 'Africa/Cairo' where icao = 'HECA';
-update public.airports set tz = 'Africa/Dakar' where icao = 'GOBD';
-update public.airports set tz = 'Africa/Niamey' where icao = 'DRRN';
-update public.airports set tz = 'America/Guadeloupe' where icao = 'TFFR';
-update public.airports set tz = 'America/Martinique' where icao = 'TFFF';
-update public.airports set tz = 'Indian/Reunion' where icao = 'FMEE';
-update public.airports set tz = 'America/Cayenne' where icao = 'SOCA';
-update public.airports set tz = 'America/New_York' where icao = 'KEWR';
-update public.airports set tz = 'America/New_York' where icao = 'KJFK';
-
--- Couvre-feu de Paris-Orly : départ du poste au plus tard 23:15, aucun mouvement de 23:30 à 06:00
--- (arrêté ministériel publié le 11 juillet 2025).
-update public.airports set curfew = '{"last_offblock":"23:15","last_landing":"23:30","reopen":"06:00"}'::jsonb where icao = 'LFPO';
+-- (Fuseaux et couvre-feu : migration *_airports_tz_curfew.sql)
