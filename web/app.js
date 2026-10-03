@@ -734,8 +734,15 @@ async function refreshData(first){
     if(first||Date.now()-LAST_WX>5*MIN){
       var freq={};MV.forEach(function(f){var c=f.dir==="D"?f.row.arr_airport:f.row.dep_airport;freq[c]=(freq[c]||0)+1;});
       var st=[HOME_ICAO].concat(Object.keys(freq).sort(function(x,y){return freq[y]-freq[x];}).slice(0,11));
+      // Peu ou pas de vols : on complète avec les stations suivies (watched_stations) jusqu'à 12.
+      if(st.length<12){
+        var ws=await SB.from("watched_stations").select("station").order("station");
+        (ws.data||[]).forEach(function(x){if(st.length<12&&st.indexOf(x.station)<0)st.push(x.station);});
+      }
       var w=await SB.from("metar_latest").select("station,observed_at,raw").in("station",st);
       var byS={};(w.data||[]).forEach(function(x){byS[x.station]=x;});
+      var miss=st.filter(function(s){return byS[s]&&!APX[s];});
+      if(miss.length){var am=await SB.from("airports").select("icao,iata,name,city,country,continent,lat,lon").in("icao",miss);(am.data||[]).forEach(function(x){APX[x.icao]=x;});}
       METAR=st.filter(function(s){return byS[s];}).map(function(s){var x=byS[s],a=APX[s];return[s,a?cityOf(a):s,x.raw,hhmm((Date.parse(x.observed_at)-D0)/MIN)];});
       LAST_WX=Date.now();
     }
