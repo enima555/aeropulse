@@ -178,13 +178,13 @@ function hoursSvg(t){
   var W=420,Hh=160,l=26,r=6,top=8,bot=22,cw=(W-l-r)/(H1-H0+1),bw=cw/2-2,y=function(v){return top+(Hh-top-bot)*(1-v/mx);};
   var mut=tok("--muted"),ln=tok("--line"),acc=tok("--accent"),alt=tok("--bar-alt"),cur=Math.floor(t/60);
   var s='<svg viewBox="0 0 '+W+' '+Hh+'" role="img" aria-label="Mouvements programmés par heure">';
-  [0,mx/2,mx].forEach(function(v){s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="'+ln+'" stroke-width="1"/><text x="'+(l-5)+'" y="'+(y(v)+3.5)+'" text-anchor="end" font-size="10" fill="'+mut+'" font-family="IBM Plex Mono">'+v+'</text>';});
+  [0,mx/2,mx].forEach(function(v){s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="'+ln+'" stroke-width="1"/><text x="'+(l-5)+'" y="'+(y(v)+3.5)+'" text-anchor="end" font-size="10" fill="'+mut+'" font-family="IBM Plex Mono, ui-monospace, monospace">'+v+'</text>';});
   for(h=H0;h<=H1;h++){
     var x=l+(h-H0)*cw+1,op=h<cur?1:(h===cur?1:.35);
     if(h===cur)s+='<rect x="'+(x-1)+'" y="'+top+'" width="'+cw+'" height="'+(Hh-top-bot)+'" fill="'+acc+'" fill-opacity=".08"/>';
     s+='<rect x="'+x+'" y="'+y(dep[h])+'" width="'+bw+'" height="'+(y(0)-y(dep[h]))+'" fill="'+acc+'" fill-opacity="'+op+'"><title>'+h+' h : '+dep[h]+' départs</title></rect>';
     s+='<rect x="'+(x+bw+1)+'" y="'+y(arr[h])+'" width="'+bw+'" height="'+(y(0)-y(arr[h]))+'" fill="'+alt+'" fill-opacity="'+op+'"><title>'+h+' h : '+arr[h]+' arrivées</title></rect>';
-    if((h-H0)%3===0)s+='<text x="'+(x+cw/2-1)+'" y="'+(Hh-6)+'" text-anchor="middle" font-size="10" fill="'+mut+'" font-family="IBM Plex Mono">'+pad(h)+'h</text>';
+    if((h-H0)%3===0)s+='<text x="'+(x+cw/2-1)+'" y="'+(Hh-6)+'" text-anchor="middle" font-size="10" fill="'+mut+'" font-family="IBM Plex Mono, ui-monospace, monospace">'+pad(h)+'h</text>';
   }
   return s+'</svg>';
 }
@@ -394,10 +394,10 @@ function rwyConfig(){if(!METAR.length)return"—";var w=decode(METAR[0][2]).wind
 function windSvg(w){
   var mut=tok("--muted"),acc=tok("--accent"),ln=tok("--line"),txt=tok("--text");
   var s='<svg viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="'+ln+'"/>';
-  ["N","E","S","O"].forEach(function(l,i){var a=i*Math.PI/2;s+='<text x="'+(38+Math.sin(a)*24)+'" y="'+(41-Math.cos(a)*24)+'" text-anchor="middle" font-size="8" fill="'+mut+'" font-family="IBM Plex Mono">'+l+'</text>';});
+  ["N","E","S","O"].forEach(function(l,i){var a=i*Math.PI/2;s+='<text x="'+(38+Math.sin(a)*24)+'" y="'+(41-Math.cos(a)*24)+'" text-anchor="middle" font-size="8" fill="'+mut+'" font-family="IBM Plex Mono, ui-monospace, monospace">'+l+'</text>';});
   if(w&&w.dir!=null){var a=w.dir*Math.PI/180,x1=38+Math.sin(a)*29,y1=38-Math.cos(a)*29,x2=38-Math.sin(a)*10,y2=38+Math.cos(a)*10;
     s+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+acc+'" stroke-width="2.4" stroke-linecap="round"/><circle cx="'+x2+'" cy="'+y2+'" r="3" fill="'+acc+'"/>';}
-  s+='<text x="38" y="'+(w&&w.dir!=null?62:42)+'" text-anchor="middle" font-size="9" fill="'+txt+'" font-family="IBM Plex Mono">'+(w?(w.dir==null?"VRB ":"")+w.spd+"kt":"")+'</text></svg>';
+  s+='<text x="38" y="'+(w&&w.dir!=null?62:42)+'" text-anchor="middle" font-size="9" fill="'+txt+'" font-family="IBM Plex Mono, ui-monospace, monospace">'+(w?(w.dir==null?"VRB ":"")+w.spd+"kt":"")+'</text></svg>';
   return s;
 }
 function vWeather(){
@@ -418,64 +418,175 @@ function vWeather(){
   }).join("")+'</div><p class="note">Catégories : VFR, MVFR (visibilité &lt; 8 km ou plafond &lt; 3 000 ft), IFR (&lt; 5 km ou &lt; 1 000 ft), LIFR (&lt; 1 600 m ou &lt; 500 ft). '+(REAL?'':'Messages d\'exemple.')+(REAL&&!METAR.length?' Aucune observation reçue : vérifiez la collecte météo (table watched_stations).':'')+'</p>';
 }
 
-/* ---------- plateforme Orly ---------- */
-function vAirport(){
-  if(REAL)return vAirportReal();
-  var t=simNow,occ={},remote=0,k=kpis(t);
-  SLOTS.forEach(function(sl){
-    if(!sl.stand||t<sl.s||t>=sl.e)return;
-    if(sl.a&&!sl.d&&isCx(sl.a,t))return;if(sl.d&&isCx(sl.d,t)&&!sl.a)return;
-    if(sl.a&&t<sl.a.ata)return;
-    if(sl.stand.charAt(0)==="L"){remote++;return;}occ[sl.stand]=sl;
-  });
-  var ln=tok("--line"),mut=tok("--muted"),pan2=tok("--panel-2"),txt=tok("--text"),col={"":txt,warn:tok("--warn"),bad:tok("--bad")};
-  var W=760,H=470,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Plan schématique des postes de stationnement d\'Orly">';
-  function rwy(y,a,b,lbl){return'<rect x="34" y="'+y+'" width="692" height="16" rx="2" fill="'+pan2+'" stroke="'+ln+'"/><text x="42" y="'+(y+12)+'" fill="'+mut+'" font-size="10" font-family="IBM Plex Mono">'+a+'</text><text x="718" y="'+(y+12)+'" text-anchor="end" fill="'+mut+'" font-size="10" font-family="IBM Plex Mono">'+b+'</text><text x="380" y="'+(y+12)+'" text-anchor="middle" fill="'+mut+'" font-size="9" font-family="IBM Plex Mono" letter-spacing="1">'+lbl+'</text>';}
-  s+=rwy(14,"07","25","PISTE 07/25 · 3 320 m");
-  s+='<line x1="34" y1="44" x2="726" y2="44" stroke="'+ln+'" stroke-dasharray="6 5"/>';
-  function stand(id,x,y){
-    var sl=occ[id],f=sl?(sl.d||sl.a):null,sv=sl&&sl.d?sev(sl.d,t):"",c=f?col[sv]:ln;
-    var g='<rect x="'+x+'" y="'+y+'" width="36" height="96" rx="3" fill="none" stroke="'+ln+'"/><text x="'+(x+18)+'" y="'+(y+12)+'" text-anchor="middle" font-size="9.5" fill="'+mut+'" font-family="IBM Plex Mono">'+id+'</text>';
-    if(f){g+='<path transform="translate('+(x+5)+','+(y+17)+') scale(1.08)" d="M12 2c.8 0 1.4.9 1.4 2v5.2l7.6 4.6v2l-7.6-2.3v4.6l2.2 1.7v1.6L12 20.6l-3.6.8v-1.6l2.2-1.7v-4.6L3 15.8v-2l7.6-4.6V4c0-1.1.6-2 1.4-2z" fill="'+c+'"/>'+
-      '<text x="'+(x+18)+'" y="'+(y+56)+'" text-anchor="middle" font-size="8.5" fill="'+txt+'" font-family="IBM Plex Mono">'+f.id+'</text>'+
-      '<text x="'+(x+18)+'" y="'+(y+70)+'" text-anchor="middle" font-size="8.5" fill="'+(sv?c:mut)+'" font-family="IBM Plex Mono">'+(sl.d?sl.d.to:"nuit")+'</text>'+
-      '<text x="'+(x+18)+'" y="'+(y+83)+'" text-anchor="middle" font-size="8.5" fill="'+(sv?c:mut)+'" font-family="IBM Plex Mono">'+(sl.d?hhmm(sl.d.atd):"—")+'</text>';}
-    else g+='<text x="'+(x+18)+'" y="'+(y+54)+'" text-anchor="middle" font-size="8.5" fill="'+mut+'" font-family="IBM Plex Sans">libre</text>';
+/* ---------- plateforme Orly : plan de l'aéroport ---------- */
+// Plan schématique d'Orly (non à l'échelle) : pistes, terminaux, postes, avions colorés par état.
+// Chaque terminal a une grille de positions ; « L » = postes au large ; files de roulage près des seuils.
+var AP_GRID={
+  "1":{x:470,y:96,cols:4,rows:2,lbl:"Orly 1"},"2":{x:580,y:96,cols:5,rows:2,lbl:"Orly 2"},"3":{x:720,y:96,cols:4,rows:2,lbl:"Orly 3"},
+  "4":{x:845,y:184,cols:5,rows:2,lbl:"Orly 4"},"L":{x:330,y:132,cols:5,rows:2,lbl:"Postes au large"}};
+var AP_CW=26,AP_CH=32;
+function windWest(){if(!METAR.length)return true;var w=decode(METAR[0][2]).wind;return!w||w.dir==null||(w.dir>=130&&w.dir<=310);}
+function apPlane(p,x,y,rot,col){
+  return'<g class="apl" data-id="'+esc(p.key)+'" transform="translate('+x+','+y+') rotate('+rot+')"><title>'+esc(p.tip)+'</title>'+
+    '<circle r="13" fill="transparent"/><path transform="translate(-10.8,-11) scale(.9)" d="M12 2c.8 0 1.4.9 1.4 2v5.2l7.6 4.6v2l-7.6-2.3v4.6l2.2 1.7v1.6L12 20.6l-3.6.8v-1.6l2.2-1.7v-4.6L3 15.8v-2l7.6-4.6V4c0-1.1.6-2 1.4-2z" fill="'+col+'"/></g>';
+}
+// planes : [{key, term:"1".."4"|"L"|"", slot:index|null, kind:"stand"|"out"|"in", sev:""|"warn"|"bad", tip}]
+function apMap(planes){
+  var ln=tok("--line"),mut=tok("--muted"),pan2=tok("--panel-2"),txt=tok("--text"),acc=tok("--accent");
+  var col={"":txt,warn:tok("--warn"),bad:tok("--bad")},west=windWest();
+  var s='<svg viewBox="30 40 965 560" role="img" aria-label="Plan schématique de l\'aéroport avec la position des avions">';
+  var mono='font-family="IBM Plex Mono, ui-monospace, monospace"';
+  s+='<path d="M40 300 L520 170 L990 140 L990 420 L620 590 L40 590 Z" fill="'+pan2+'" opacity=".45"/>';
+  // Voies de circulation
+  [[120,300,700,185],[700,185,760,160],[160,520,860,340],[860,340,900,250],[500,240,560,160],[620,214,640,160],[300,270,350,195],[760,300,850,260],[420,440,520,232]].forEach(function(a){
+    s+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+a[2]+'" y2="'+a[3]+'" stroke="'+ln+'" stroke-width="6" stroke-linecap="round" opacity=".8"/>';});
+  function rw(x1,y1,x2,y2,w,a,b,lbl,use){
+    var ang=Math.atan2(y2-y1,x2-x1)*180/Math.PI,len=Math.hypot(x2-x1,y2-y1),mx=(x1+x2)/2,my=(y1+y2)/2;
+    var c=use==="dep"?acc:use==="arr"?txt:mut;
+    var g='<g transform="translate('+mx+','+my+') rotate('+ang+')">'+
+      '<rect x="'+(-len/2)+'" y="'+(-w/2)+'" width="'+len+'" height="'+w+'" rx="2" fill="'+(use?c:pan2)+'" opacity="'+(use==="dep"?".85":use==="arr"?".5":"1")+'" stroke="'+ln+'"/>'+
+      '<line x1="'+(-len/2+30)+'" y1="0" x2="'+(len/2-30)+'" y2="0" stroke="'+(use?"#0C1424":mut)+'" stroke-dasharray="10 8" opacity=".6"/>'+
+      '<text x="'+(-len/2+6)+'" y="4" font-size="13" '+mono+' fill="'+(use?"#0C1424":mut)+'" font-weight="700">'+a+'</text>'+
+      '<text x="'+(len/2-6)+'" y="4" font-size="13" '+mono+' text-anchor="end" fill="'+(use?"#0C1424":mut)+'" font-weight="700">'+b+'</text></g>';
+    var lx=mx,ly=my+w/2+18;
+    g+='<text x="'+lx+'" y="'+ly+'" transform="rotate('+ang+' '+lx+' '+(my)+')" text-anchor="middle" font-size="12.5" '+mono+' fill="'+(use?c:mut)+'" letter-spacing="1">'+lbl+(use==="dep"?" · DÉCOLLAGES":use==="arr"?" · ATTERRISSAGES":"")+'</text>';
     return g;
   }
-  function row(y,terms){
-    var n=terms.reduce(function(a,tm){return a+STANDS[tm].length;},0),wid=n*38-2+24*(terms.length-1),x=(W-wid)/2,out="";
-    terms.forEach(function(tm){
-      var len=STANDS[tm].length*38-2;
-      out+='<rect x="'+x+'" y="'+y+'" width="'+len+'" height="20" rx="3" fill="'+pan2+'" stroke="'+ln+'"/><text x="'+(x+len/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="'+mut+'" font-size="11" font-family="IBM Plex Sans" letter-spacing="2">ORLY '+tm+'</text>';
-      STANDS[tm].forEach(function(id,i){out+=stand(id,x+i*38,y+28);});
-      x+=len+24;
-    });
-    return out;
-  }
-  s+=row(58,["1","2"])+row(206,["3","4"]);
-  s+='<line x1="34" y1="350" x2="726" y2="350" stroke="'+ln+'" stroke-dasharray="6 5"/>';
-  s+='<line x1="120" y1="440" x2="300" y2="372" stroke="'+ln+'" stroke-width="10" stroke-linecap="round" opacity=".55"/><text x="306" y="374" fill="'+mut+'" font-size="9" font-family="IBM Plex Mono">02/20 · 2 400 m</text>';
-  s+=rwy(440,"06","24","PISTE 06/24 · 3 650 m");
+  s+=rw(160,520,880,345,16,"06","24","PISTE 06/24 · 3 650 m",west?"dep":"arr");
+  s+=rw(120,305,700,190,13,"07","25","PISTE 07/25 · 3 320 m",west?"arr":"dep");
+  s+=rw(70,520,125,360,9,"02","20","02/20",null);
+  // Bâtiments
+  s+='<rect x="462" y="58" width="370" height="24" rx="3" fill="'+ln+'"/><text x="647" y="74" text-anchor="middle" font-size="13" fill="'+txt+'" font-family="IBM Plex Sans, system-ui, sans-serif" font-weight="600" letter-spacing="2">ORLY 1 · 2 · 3</text>';
+  s+='<rect x="838" y="146" width="148" height="24" rx="3" fill="'+ln+'"/><text x="912" y="162" text-anchor="middle" font-size="13" fill="'+txt+'" font-family="IBM Plex Sans, system-ui, sans-serif" font-weight="600" letter-spacing="2">ORLY 4</text>';
+  s+='<rect x="868" y="440" width="70" height="40" rx="3" fill="none" stroke="'+ln+'"/><text x="903" y="464" text-anchor="middle" font-size="11" fill="'+mut+'" '+mono+'>FRET</text>';
+  // Aires de stationnement et positions
+  var byT={},over={};Object.keys(AP_GRID).forEach(function(k){byT[k]=[];});
+  var taxiOut=[],taxiIn=[];
+  planes.forEach(function(p){if(p.kind==="out")taxiOut.push(p);else if(p.kind==="in")taxiIn.push(p);else byT[AP_GRID[p.term]?p.term:"L"].push(p);});
+  Object.keys(AP_GRID).forEach(function(k){
+    var g=AP_GRID[k],n=g.cols*g.rows,wd=g.cols*AP_CW,ht=g.rows*AP_CH,list=byT[k],taken={};
+    s+='<rect x="'+(g.x-4)+'" y="'+(g.y-4)+'" width="'+(wd+8)+'" height="'+(ht+20)+'" rx="4" fill="none" stroke="'+ln+'" stroke-dasharray="'+(k==="L"?"4 4":"0")+'"/>';
+    s+='<text x="'+(g.x+wd/2)+'" y="'+(g.y+ht+12)+'" text-anchor="middle" font-size="12" fill="'+mut+'" '+mono+'>'+g.lbl+'</text>';
+    for(var i=0;i<n;i++){var cx=g.x+(i%g.cols)*AP_CW+AP_CW/2,cy=g.y+Math.floor(i/g.cols)*AP_CH+AP_CH/2;
+      s+='<line x1="'+cx+'" y1="'+(cy-AP_CH/2+2)+'" x2="'+cx+'" y2="'+(cy+AP_CH/2-4)+'" stroke="'+ln+'" stroke-width="1" opacity=".7"/>';}
+    var free=[];list.forEach(function(p){if(p.slot!=null&&p.slot<n&&!taken[p.slot])taken[p.slot]=p;else free.push(p);});
+    var j=0;free.forEach(function(p){while(j<n&&taken[j])j++;if(j<n){taken[j]=p;j++;}else over[k]=(over[k]||0)+1;});
+    Object.keys(taken).forEach(function(i){i=+i;var p=taken[i],cx=g.x+(i%g.cols)*AP_CW+AP_CW/2,cy=g.y+Math.floor(i/g.cols)*AP_CH+AP_CH/2;
+      s+=apPlane(p,cx,cy,0,col[p.sev]);});
+    if(over[k])s+='<text x="'+(g.x+wd+8)+'" y="'+(g.y+10)+'" font-size="10" fill="'+txt+'" '+mono+'>+'+over[k]+'</text>';
+  });
+  // Files de roulage : départs vers le seuil de décollage, arrivées entre la piste et les terminaux.
+  var qOut=west?{x:850,y:318,dx:-25,dy:7,rot:105}:{x:150,y:282,dx:25,dy:-6,rot:-75};
+  taxiOut.slice(0,8).forEach(function(p,i){s+=apPlane(p,qOut.x+i*qOut.dx,qOut.y+i*qOut.dy,qOut.rot,col[p.sev]);});
+  var qIn=west?{x:520,y:232,dx:28,dy:-6,rot:20}:{x:640,y:372,dx:26,dy:-14,rot:40};
+  taxiIn.slice(0,8).forEach(function(p,i){s+=apPlane(p,qIn.x+i*qIn.dx,qIn.y+i*qIn.dy,qIn.rot,col[p.sev]);});
+  s+='<text x="'+(west?850:150)+'" y="'+(west?296:262)+'" text-anchor="middle" font-size="11.5" fill="'+acc+'" '+mono+'>'+(taxiOut.length?"ROULAGE DÉPART ("+taxiOut.length+")":"")+'</text>';
+  s+='<text x="'+(west?570:700)+'" y="'+(west?262:398)+'" text-anchor="middle" font-size="11.5" fill="'+txt+'" '+mono+'>'+(taxiIn.length?"ROULAGE ARRIVÉE ("+taxiIn.length+")":"")+'</text>';
+  // Rose du vent
+  s+='<g transform="translate(950,550)"><circle r="26" fill="none" stroke="'+ln+'"/><path d="M0 -20 L7 6 L0 1 L-7 6 Z" fill="'+mut+'" transform="rotate('+(west?250:70)+')"/><text y="42" text-anchor="middle" font-size="11" fill="'+mut+'" '+mono+'>'+(west?"FLUX OUEST":"FLUX EST")+'</text></g>';
   s+='</svg>';
-  var used=Object.keys(occ).length,totSt=Object.keys(STANDS).reduce(function(a,x){return a+STANDS[x].length;},0);
+  return{svg:s,onGround:planes.length,west:west};
+}
+// Liste « avions à surveiller » à gauche du plan (comme l'espace « Airport » du guide A:Wall).
+function apWatch(planes){
+  var list=planes.filter(function(p){return p.sev||p.kind!=="stand";}).sort(function(a,b){var r={bad:0,warn:1,"":2};return r[a.sev]-r[b.sev];});
+  if(!list.length)return'<p class="note" style="margin:0">Aucun avion à surveiller : tout est à l\'heure.</p>';
+  return'<ul class="apw">'+list.slice(0,12).map(function(p){
+    return'<li data-id="'+esc(p.key)+'" class="'+p.sev+'"><span class="sev '+(p.sev||(p.kind==="stand"?"ok":"info"))+'"></span><b class="mono">'+esc(p.id)+'</b><span class="why">'+esc(p.why)+'</span><span class="sub">'+esc(p.sub)+'</span></li>';}).join("")+
+    (list.length>12?'<li class="more">'+(list.length-12)+' autres…</li>':'')+'</ul>';
+}
+function apWire(){
+  var root=document.querySelector(".apmap");if(!root)return;
+  var wrap=root.querySelector(".apron");if(wrap&&wrap.scrollWidth>wrap.clientWidth)wrap.scrollLeft=wrap.scrollWidth;   // téléphone : montrer les terminaux
+  function hi(id,on){root.querySelectorAll('[data-id="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]').forEach(function(e){e.classList.toggle("hl",on);});}
+  root.querySelectorAll("[data-id]").forEach(function(e){
+    e.addEventListener("pointerenter",function(){hi(e.dataset.id,true);});
+    e.addEventListener("pointerleave",function(){hi(e.dataset.id,false);});
+  });
+}
+function apReason(f,t,kind){
+  if(isCx(f,t))return"Annulé";
+  if(f.cf&&known(f,t))return"Risque couvre-feu";
+  var l=Math.round(late(f));
+  if(kind==="out")return"Roulage départ"+(l>15?" · "+l+" min de retard":"");
+  if(kind==="in")return"Roulage arrivée"+(l>15?" · "+l+" min de retard":"");
+  if(l>15)return(f.dir==="D"?"Départ retardé de ":"Arrivé avec ")+l+" min"+(f.dir==="A"?" de retard":"");
+  return f.dir==="D"?"À l'heure":"Arrivé à l'heure";
+}
+function apItem(f,t,kind,term,slot){
+  var dest=f.dir==="D"?"→ "+f.to+" · ETD "+hhmm(f.etdShow!=null?f.etdShow:f.atd):"← "+f.from+" · "+(isFinite(f.ata)&&t>=f.ata?"arrivé "+hhmm(f.ata):"ETA "+hhmm(f.etaShow!=null?f.etaShow:(isFinite(f.ata)?f.ata:f.sta)));
+  var tt=term||f.term||"",tl=tt&&tt!=="L"?"T"+tt:tt==="L"?"Au large":"Terminal inconnu";
+  var why=apReason(f,t,kind);
+  return{key:f.id+f.dir,id:f.id,term:term,slot:slot,kind:kind,sev:kind==="stand"&&f.dir==="A"&&!isCx(f,t)?"":sev(f,t),why:why,
+    sub:tl+" · "+dest+(f.ty&&f.ty!=="—"?" · "+f.ty:""),tip:f.id+" · "+why+" · "+tl+" · "+dest};
+}
+// Mode démo : postes simulés (SLOTS), roulage d'après les heures simulées.
+function apPlanesDemo(t){
+  var out=[],seen={};
+  SLOTS.forEach(function(sl){
+    if(!sl.stand||t<sl.s||t>=sl.e)return;
+    if(sl.a&&!sl.d&&isCx(sl.a,t))return;if(sl.d&&isCx(sl.d,t)&&!sl.a)return;if(sl.a&&t<sl.a.ata)return;
+    var f=sl.d&&!(t>=sl.d.atd)?sl.d:(sl.a||sl.d);if(!f||seen[f.id])return;seen[f.id]=1;
+    var rem=sl.stand.charAt(0)==="L",term=rem?"L":sl.term,slot=rem?null:STANDS[sl.term].indexOf(sl.stand);
+    var it=apItem(f,t,"stand",term,slot);if(sl.d&&f===sl.d)it.sev=sev(sl.d,t);out.push(it);
+  });
+  MV.forEach(function(f){
+    if(isCx(f,t)||seen[f.id])return;
+    if(f.dir==="D"&&t>=f.atd&&t<f.atd+(f.taxi||12))out.push(apItem(f,t,"out","",null));
+    else if(f.dir==="A"&&t>=f.ata-7&&t<f.ata)out.push(apItem(f,t,"in","",null));
+  });
+  return out;
+}
+// Données réelles : la source donne le terminal mais pas le poste → avions répartis sur les positions de leur terminal.
+function apPlanesReal(t){
+  var out=[],now=D0+t*MIN;
+  MV.forEach(function(f){
+    if(f.cx)return;var r=f.row,term=f.term&&AP_GRID[f.term]?f.term:"L";
+    if(f.dir==="D"){
+      var off=isFinite(f.atd)&&t>=f.atd,airb=r.takeoff!=null&&r.takeoff<=now;
+      if(off&&!airb&&t-f.atd<30)out.push(apItem(f,t,"out","",null));
+      else if(!off&&t>=f.std-60&&t<=f.etdShow+45)out.push(apItem(f,t,"stand",term,null));
+    }else{
+      var landed=r.landing!=null&&r.landing<=now,inb=isFinite(f.ata)&&t>=f.ata;
+      if(landed&&!inb&&(now-r.landing)/MIN<25)out.push(apItem(f,t,"in","",null));
+      else if(inb&&t-f.ata<45)out.push(apItem(f,t,"stand",term,null));
+    }
+  });
+  out.sort(function(a,b){return a.key<b.key?-1:1;});
+  return out;
+}
+function apPanel(planes,note){
+  var m=apMap(planes);
+  return'<section class="panel apmap"><div class="panel-h"><h2>Plan de l\'aéroport</h2><span class="meta">'+m.onGround+' avions sur la plateforme</span></div>'+
+    '<div class="apgrid"><div class="apside"><span class="label">À surveiller</span>'+apWatch(planes)+'</div><div class="tbl-wrap apron">'+m.svg+'</div></div>'+
+    '<p class="note" style="padding:0 14px 12px;margin:0">'+note+' Couleur : blanc = à l\'heure, jaune = retard 16–30 min, rouge = retard &gt; 30 min, annulation ou risque couvre-feu. Piste bleue : décollages ; piste claire : atterrissages (configuration déduite du vent à Orly).</p></section>';
+}
+
+function rwyItems(){
+  var west=windWest();
+  return'<div class="rwy-item"><b>Config.</b><span>'+(west?"Flux ouest":"Flux est")+' (vent LFPO)</span></div>'+
+   '<div class="rwy-item"><b>'+(west?"24":"06")+'</b><span>Piste 06/24 · 3 650 m</span><span class="pill air">'+(west?"Décollages":"Atterrissages")+'</span></div>'+
+   '<div class="rwy-item"><b>'+(west?"25":"07")+'</b><span>Piste 07/25 · 3 320 m</span><span class="pill">'+(west?"Atterrissages":"Décollages")+'</span></div>'+
+   '<div class="rwy-item"><b>02 / 20</b><span>2 400 m</span><span class="pill">Peu utilisée</span></div>';
+}
+function vAirport(){
+  if(REAL)return vAirportReal();
+  var t=simNow,k=kpis(t),planes=apPlanesDemo(t);
+  var used=planes.filter(function(p){return p.kind==="stand"&&p.term!=="L";}).length,totSt=Object.keys(STANDS).reduce(function(a,x){return a+STANDS[x].length;},0);
   var inCF=t<CF_END||t>=CF_ARR,toDep=CF_DEP-t,toArr=CF_ARR-t;
   var cf=inCF?'<span class="label">Couvre-feu</span><b style="color:var(--bad)">En cours</b><span style="color:var(--muted);font-size:12.5px">Aucun mouvement jusqu\'à 06:00.</span>':
     '<span class="label">Avant le couvre-feu</span><b>'+(toDep>0?dur(toDep):"Départs clos")+'</b><span style="color:var(--muted);font-size:12.5px">Dernier départ du poste à 23:15'+(toDep<=0?' · derniers atterrissages avant 23:30 ('+dur(toArr)+')':', dernier atterrissage à 23:30')+'.</span>';
   var risks=MV.filter(function(f){return f.cf&&!isCx(f,t)&&known(f,t)&&!done(f,t);});
   var rl=risks.length?'<ul class="risk">'+risks.map(function(f){return'<li><span class="mono">'+f.id+'</span><span>'+(f.dir==="D"?"→ "+f.to+", départ poste estimé ":"← "+f.from+", atterrissage estimé ")+'<b class="mono" style="color:var(--bad)">'+hhmm(f.dir==="D"?f.atd:f.ata)+'</b></span></li>';}).join("")+'</ul>':'<p class="note" style="margin:0">Aucun vol à risque pour l\'instant.</p>';
-  main.innerHTML=head("Plateforme Orly","Postes, pistes, roulage et couvre-feu")+
-   '<div class="apt"><section class="panel apron"><div class="panel-h"><h2>Postes au contact</h2><span class="meta">'+used+' / '+totSt+' occupés · '+remote+' au large</span></div><div class="panel-b tbl-wrap">'+s+'</div><p class="note" style="padding:0 14px 12px;margin:0">Plan schématique, non à l\'échelle. Couleur de l\'avion : blanc = à l\'heure, jaune = retard 16–30 min, rouge = retard &gt; 30 min ou risque couvre-feu. Sous l\'avion : prochain vol, destination et heure de départ estimée.</p></section>'+
-   '<section class="panel"><div class="panel-h"><h2>Pistes &amp; couvre-feu</h2></div><div class="panel-b rwy">'+
-   '<div class="rwy-item"><b>Config.</b><span>'+rwyConfig()+' (vent LFPO)</span></div>'+
-   '<div class="rwy-item"><b>06 / 24</b><span>3 650 m</span><span class="pill ok">En service</span></div>'+
-   '<div class="rwy-item"><b>07 / 25</b><span>3 320 m</span><span class="pill ok">En service</span></div>'+
-   '<div class="rwy-item"><b>02 / 20</b><span>2 400 m</span><span class="pill">Peu utilisée</span></div>'+
-   '<div class="curfew">'+cf+'</div>'+
+  main.innerHTML=head("Plateforme Orly","Plan de l'aéroport, pistes, roulage et couvre-feu")+
+   apPanel(planes,"Plan schématique, non à l'échelle. Postes simulés (démonstration).")+
+   '<div class="apt2"><section class="panel"><div class="panel-h"><h2>Pistes &amp; couvre-feu</h2></div><div class="panel-b rwy">'+rwyItems()+'<div class="curfew">'+cf+'</div></div></section>'+
+   '<section class="panel"><div class="panel-h"><h2>Roulage &amp; postes</h2></div><div class="panel-b rwy">'+
    '<div class="minis"><div class="mini"><span class="label">Roulage sortie</span><b>'+fx(k.taxi,1)+' min</b></div><div class="mini"><span class="label">Roulage entrée</span><b>'+fx(k.taxiIn,1)+' min</b></div>'+
    '<div class="mini"><span class="label">Postes occupés</span><b>'+pct(used/totSt,0)+' %</b></div><div class="mini"><span class="label">Risque couvre-feu</span><b style="color:'+(risks.length?"var(--bad)":"var(--text)")+'">'+risks.length+'</b></div></div>'+
    '<div><span class="label">Vols à risque couvre-feu</span>'+rl+'</div>'+
    '</div></section></div>';
+  apWire();
 }
 
 /* ---------- benchmark ---------- */
@@ -838,13 +949,22 @@ function vAirportReal(){
   }
   var risks=MV.filter(function(f){return f.cf&&!isCx(f,t)&&known(f,t)&&!done(f,t);});
   var rl=HOME_CURFEW?'<div><span class="label">Vols à risque couvre-feu</span>'+(risks.length?'<ul class="risk">'+risks.map(function(f){return'<li><span class="mono">'+f.id+'</span><span>'+(f.dir==="D"?"→ "+f.to+", départ estimé ":"← "+f.from+", arrivée estimée ")+'<b class="mono" style="color:var(--bad)">'+hhmm(f.dir==="D"?f.etdShow:f.etaShow)+'</b></span></li>';}).join("")+'</ul>':'<p class="note" style="margin:0">Aucun vol à risque pour l\'instant.</p>')+'</div>':'';
-  main.innerHTML=head(esc(HOME_NAME),"Portes, roulage et couvre-feu, données réelles")+
-   '<div class="apt"><section class="panel"><div class="panel-h"><h2>Prochains départs par porte</h2><span class="meta">'+Object.keys(byT).sort().map(function(x){return esc(x)+" : "+byT[x];}).join(" · ")+'</span></div>'+
-   '<div class="tbl-wrap"><table><thead><tr><th>Terminal</th><th>Porte</th><th>Vol</th><th>Destination</th><th>STD</th><th>ETD</th><th>Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" style="color:var(--muted)">Aucun départ dans les deux prochaines heures.</td></tr>')+'</tbody></table></div>'+
-   '<p class="note" style="padding:0 14px 12px;margin:0">Le plan des postes s\'affiche quand la source de données transmet les numéros de poste.</p></section>'+
-   '<section class="panel"><div class="panel-h"><h2>Roulage &amp; couvre-feu</h2></div><div class="panel-b rwy">'+cf+
-   '<div class="minis"><div class="mini"><span class="label">Roulage sortie (2 h)</span><b>'+fx(k.taxi,1)+' min</b></div><div class="mini"><span class="label">Roulage entrée (jour)</span><b>'+fx(k.taxiIn,1)+' min</b></div>'+
-   '<div class="mini"><span class="label">Départs à venir (2 h)</span><b>'+next.length+'</b></div><div class="mini"><span class="label">Annulés aujourd\'hui</span><b>'+k.cx+'</b></div></div>'+rl+'</div></section></div>';
+  var isOrly=HOME_ICAO==="LFPO";
+  var tbl='<section class="panel"><div class="panel-h"><h2>Prochains départs par terminal</h2><span class="meta">'+Object.keys(byT).sort().map(function(x){return esc(x)+" : "+byT[x];}).join(" · ")+'</span></div>'+
+   '<div class="tbl-wrap"><table><thead><tr><th>Terminal</th><th>Porte</th><th>Vol</th><th>Destination</th><th>STD</th><th>ETD</th><th>Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" style="color:var(--muted)">Aucun départ dans les deux prochaines heures.</td></tr>')+'</tbody></table></div></section>';
+  var left=isOrly?apPanel(apPlanesReal(t),"Plan schématique, non à l'échelle. Positions estimées : la source de données indique le terminal mais pas le numéro de poste, les avions sont donc répartis sur les positions de leur terminal."):tbl;
+  var minis='<div class="minis"><div class="mini"><span class="label">Roulage sortie (2 h)</span><b>'+fx(k.taxi,1)+' min</b></div><div class="mini"><span class="label">Roulage entrée (jour)</span><b>'+fx(k.taxiIn,1)+' min</b></div>'+
+   '<div class="mini"><span class="label">Départs à venir (2 h)</span><b>'+next.length+'</b></div><div class="mini"><span class="label">Annulés aujourd\'hui</span><b>'+k.cx+'</b></div></div>';
+  if(isOrly){
+    main.innerHTML=head(esc(HOME_NAME),"Plan de l'aéroport, pistes, roulage et couvre-feu, données réelles")+left+
+     '<div class="apt2"><section class="panel"><div class="panel-h"><h2>Pistes &amp; couvre-feu</h2></div><div class="panel-b rwy">'+rwyItems()+cf+'</div></section>'+
+     '<section class="panel"><div class="panel-h"><h2>Roulage</h2></div><div class="panel-b rwy">'+minis+rl+'</div></section></div>'+
+     '<div style="margin-top:14px">'+tbl+'</div>';
+  }else{
+    main.innerHTML=head(esc(HOME_NAME),"Portes, roulage et couvre-feu, données réelles")+
+     '<div class="apt">'+tbl+'<section class="panel"><div class="panel-h"><h2>Roulage &amp; couvre-feu</h2></div><div class="panel-b rwy">'+cf+minis+rl+'</div></section></div>';
+  }
+  apWire();
 }
 
 /* ---------- import de fichiers ---------- */

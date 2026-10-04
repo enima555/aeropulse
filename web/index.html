@@ -138,6 +138,20 @@ select{background:var(--panel);color:var(--text);border:1px solid var(--line);bo
 /* Aéroport */
 .apt{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px}
 .apron svg{width:100%;min-width:640px;height:auto;display:block}
+.apgrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:0;align-items:start}
+.apmap .apron svg{min-width:760px}
+.apt2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+@media (max-width:900px){.apt2{grid-template-columns:minmax(0,1fr)}}
+.apside{padding:10px 12px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px;max-height:640px;overflow:auto}
+.apw{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.apw li{display:grid;grid-template-columns:10px auto 1fr;column-gap:8px;align-items:center;padding:7px 9px;background:var(--panel-2);border-radius:var(--r);font-size:12.5px;cursor:default;border:1px solid transparent}
+.apw li .sev{width:8px;height:8px;border-radius:50%}
+.apw li .why{font-weight:600}
+.apw li .sub{grid-column:2 / 4;color:var(--muted);font-size:11.5px}
+.apw li.bad .why{color:var(--bad)} .apw li.warn .why{color:var(--warn)}
+.apw li.hl{border-color:var(--accent)} .apw li.more{display:block;color:var(--muted)}
+.apl{cursor:pointer} .apl.hl path{stroke:var(--accent);stroke-width:2.5} .apl.hl{filter:drop-shadow(0 0 4px var(--accent))}
+@media (max-width:760px){.apgrid{grid-template-columns:minmax(0,1fr)}.apside{border-right:0;border-bottom:1px solid var(--line);max-height:260px}}
 .rwy{display:flex;flex-direction:column;gap:10px}
 .rwy-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--panel-2);border-radius:var(--r);flex-wrap:wrap}
 .rwy-item b{font-family:var(--f-mono);font-size:15px}
