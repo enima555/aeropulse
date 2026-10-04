@@ -93,6 +93,8 @@ await page.click('nav button[data-ws="ov"]'); await page.waitForTimeout(600);
 await page.screenshot({ path: `${out}/real-phone.png`, fullPage: false });
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 check(!overflow, "téléphone : pas de défilement horizontal");
+const lo = await page.$eval("#logoutBtn", (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right <= window.innerWidth; });
+check(lo, "téléphone : bouton de déconnexion visible");
 
 check(errs.length === 0, "aucune erreur JavaScript" + (errs.length ? " : " + errs.join(" | ") : ""));
 await b.close(); server.close();

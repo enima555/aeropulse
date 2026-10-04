@@ -212,7 +212,7 @@ input[type=search]{background:var(--panel);border:1px solid var(--line);border-r
   nav.rail button[aria-current="page"]{box-shadow:inset 0 2px 0 var(--accent)}
   .rail-foot{display:none}
   header.top{padding:8px 16px;gap:10px}
-  .brand small,.hide-sm{display:none}
+  .brand small,.hide-sm,.lbl-lg{display:none}
   main{padding-inline:16px}
   .progress{margin-inline:-16px}
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -232,6 +232,7 @@ input[type=search]{background:var(--panel);border:1px solid var(--line);border-r
 .login-box button.link{background:none;border:0;color:var(--accent);cursor:pointer;font-size:13px;padding:4px;text-align:left}
 .login-box .err{color:var(--bad);font-size:13px;min-height:1.2em}
 .chip.fresh{cursor:default}
+#logoutBtn{display:inline-flex;align-items:center;gap:6px} #logoutBtn[hidden]{display:none}
 .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
 .imp{margin-bottom:14px}
 .imp ul{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted)}
@@ -249,7 +250,7 @@ input[type=search]{background:var(--panel);border:1px solid var(--line);border-r
     <span class="chip fresh" id="freshChip" hidden><span class="dot" id="freshDot"></span><span id="freshLbl">Connexion…</span></span>
     <button class="chip hide-sm" id="wallBtn" aria-pressed="false" title="Fait défiler les espaces automatiquement, pour un grand écran">Mode mur</button>
     <button class="chip bell" id="bellBtn" title="Alertes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge" id="bellCount" hidden>0</span></button>
-    <button class="chip hide-sm" id="logoutBtn" hidden>Se déconnecter</button>
+    <button class="chip" id="logoutBtn" hidden title="Se déconnecter" aria-label="Se déconnecter"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg><span class="lbl-lg">Se déconnecter</span></button>
     <div class="clock"><span id="clock" class="num">--:--</span><em id="clockTz">PARIS</em><span class="utc hide-sm" id="clockUtc"></span></div>
   </header>
   <nav class="rail" id="nav" aria-label="Espaces de travail"></nav>
