@@ -40,8 +40,8 @@ aviationweather.gov       ─────► ingest-metar   ─┘   + règles d
 | Projet Supabase | `aeropulse` (`pfkteqdngzmlydueulyj`), région Paris (eu-west-3), offre gratuite |
 | URL de l'API | https://pfkteqdngzmlydueulyj.supabase.co |
 | Fonctions serveur | `ingest-metar`, `sync-flights`, `import-flights`, `seed-airports` |
-| Collectes planifiées | météo toutes les 10 min (`aeropulse-metar`), vols toutes les 5 min (`aeropulse-flights`) |
-| Secrets | dans Supabase Vault : `cron_secret` (généré), `project_url`, `aerodatabox_key` (à ajouter) |
+| Collectes planifiées | météo toutes les 10 min (`aeropulse-metar`), vols toutes les 3 h de 5 h à 23 h, heure de Paris (`aeropulse-flights`, adapté à l’offre gratuite AeroDataBox ; à resserrer avec une offre payante : `select cron.alter_job(jobid, schedule := '*/10 * * * *') from cron.job where jobname = 'aeropulse-flights';`) |
+| Secrets | dans Supabase Vault : `cron_secret` (généré), `project_url`, `aerodatabox_key` |
 | Site Netlify | `aeropulse-app` → https://aeropulse-app.netlify.app |
 | Client de démonstration | « Démo Paris-Orly » (LFPO), synchronisé dès que la clé AeroDataBox est ajoutée |
 
