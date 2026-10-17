@@ -14,3 +14,7 @@ verify_jwt = false
 
 [functions.seed-airports]
 verify_jwt = false
+
+[functions.guest-access]
+# Jeton utilisateur vérifié dans le code ; le nettoyage planifié présente le secret x-cron-secret.
+verify_jwt = false

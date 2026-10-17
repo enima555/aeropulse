@@ -696,11 +696,12 @@ function stopWall(){if(wall){wall=false;wallBtn.setAttribute("aria-pressed","fal
 var speedBtn=document.getElementById("speedBtn");
 speedBtn.addEventListener("click",function(){speed=speed===1?20:1;speedBtn.setAttribute("aria-pressed",speed!==1);document.getElementById("speedLbl").textContent=speed===1?"Temps réel":"Simulation ×20";});
 function render(first){({ov:vOverview,fl:vFlights,wx:vWeather,ap:vAirport,bm:vBench,kp:vCatalog,al:vAlerts})[cur](first);}
-var lastRender=0;
+var lastRender=0,lastGuest=0;
 function loop(ts){
   var dt=ts-lastTs;lastTs=ts;simNow=REAL?realNow():Math.min(simNow+dt/60000*speed,23*60+59);
   document.getElementById("clock").textContent=hhmm(simNow);
   document.getElementById("clockUtc").textContent=(REAL?new Date(D0+simNow*MIN).toISOString().slice(11,16):hhmm(simNow-OFFSET))+" UTC";
+  if(IS_GUEST&&GUEST_EXP){if(Date.now()>=GUEST_EXP){guestExpired();return;}if(ts-lastGuest>1000){lastGuest=ts;updGuest();}}
   if(REAL&&!fetching&&Date.now()-LAST_FETCH>60000){fetching=true;refreshData(false).then(function(){fetching=false;render(false);});}
   if(wall){var p=(ts-wallT)/WALL_MS,bar=document.querySelector("#prog i");if(bar)bar.style.width=Math.min(100,p*100)+"%";
     if(p>=1){wallT=ts;var order=["ov","fl","wx","ap","bm"],i=order.indexOf(cur);go(order[(i+1)%order.length]);}}
@@ -711,7 +712,7 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 /* ---------- données réelles (Supabase) ---------- */
-var CFG=window.AEROPULSE_CONFIG||{},REAL=false,SB=null,SESSION=null,TEN=null,ROLE="viewer",MIN=60000;
+var CFG=window.AEROPULSE_CONFIG||{},REAL=false,SB=null,SESSION=null,TEN=null,ROLE="viewer",MIN=60000,IS_GUEST=false,GUEST_EXP=null;
 var HOME_ICAO="LFPO",HUB="ORY",HOME_NAME="Paris-Orly",HOME_TZ="Europe/Paris",HOME_CURFEW=null;
 var DAY=null,D0=0,D1=0,RAWN=[],APX={},DELAY_LBL={},LAST_FETCH=0,LAST_WX=0,LAST_UPDATE=null,FETCH_ERR=null,fetching=false,loopStarted=false,IMPORT_RESULT=null;
 function realNow(){return(Date.now()-D0)/MIN;}
@@ -719,7 +720,7 @@ function localDay(tz){return new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"
 function hm(str){var p=String(str||"").split(":");return(+p[0]||0)*60+(+p[1]||0);}
 function loadScript(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.onload=res;s.onerror=function(){rej(new Error("Chargement impossible : "+src));};document.head.appendChild(s);});}
 function frErr(e){var m=(e&&(e.message||e.error_description))||String(e);
-  if(/Invalid login credentials/i.test(m))return"E-mail ou mot de passe incorrect.";
+  if(/Invalid login credentials/i.test(m))return"Identifiant ou mot de passe incorrect.";
   if(/Email not confirmed/i.test(m))return"Adresse e-mail pas encore confirmée : ouvrez le lien reçu par e-mail.";
   if(/Failed to fetch|NetworkError|Load failed/i.test(m))return"Serveur injoignable. Vérifiez votre connexion.";
   return m;}
@@ -750,9 +751,12 @@ function showLogin(msg){
   document.getElementById("lgMagic").hidden=!SB;
   setTimeout(function(){var e=document.getElementById("lgEmail");if(e)e.focus();},50);
 }
+// Les invités saisissent seulement leur identifiant (« invite-xxxxxx ») : on ajoute le domaine technique.
+var GUEST_DOMAIN="invite.aeropulse.app";
+function loginEmail(){var v=document.getElementById("lgEmail").value.trim().toLowerCase();return v.indexOf("@")<0&&v?v+"@"+GUEST_DOMAIN:v;}
 document.getElementById("loginForm").addEventListener("submit",function(e){
   e.preventDefault();if(!SB)return;
-  var email=document.getElementById("lgEmail").value.trim(),pw=document.getElementById("lgPw").value,btn=document.getElementById("lgBtn"),err=document.getElementById("lgErr");
+  var email=loginEmail(),pw=document.getElementById("lgPw").value,btn=document.getElementById("lgBtn"),err=document.getElementById("lgErr");
   if(!pw){err.textContent="Saisissez votre mot de passe, ou demandez un lien de connexion par e-mail.";return;}
   btn.disabled=true;btn.textContent="Connexion…";err.textContent="";
   SB.auth.signInWithPassword({email:email,password:pw}).then(function(r){
@@ -778,6 +782,13 @@ async function startReal(){
   main.innerHTML='<p class="note">Chargement des données…</p>';
   try{
     var uid=SESSION.user.id;
+    IS_GUEST=!!(SESSION.user.app_metadata&&SESSION.user.app_metadata.guest);
+    if(IS_GUEST){
+      var ag=await SB.rpc("activate_guest");
+      if(ag.error)throw ag.error;
+      GUEST_EXP=ag.data?Date.parse(ag.data):null;
+      if(!GUEST_EXP)return guestExpired();
+    }
     var res=await Promise.all([
       SB.from("tenants").select("id,name,kind,home_airport,airline_iata").order("name"),
       SB.from("memberships").select("tenant_id,role").eq("user_id",uid),
@@ -802,7 +813,7 @@ async function startReal(){
     await refreshData(true);
     go(cur);
     if(!loopStarted){loopStarted=true;requestAnimationFrame(loop);}
-  }catch(e){emptyState("Chargement impossible",esc(frErr(e))+" Rechargez la page dans quelques instants.");}
+  }catch(e){if(IS_GUEST)return guestExpired();emptyState("Chargement impossible",esc(frErr(e))+" Rechargez la page dans quelques instants.");}
 }
 function applyChrome(){
   document.getElementById("brandSub").textContent=TEN.name+" · "+HOME_NAME+" ("+HUB+")";
@@ -810,7 +821,9 @@ function applyChrome(){
   document.getElementById("freshChip").hidden=false;
   document.getElementById("logoutBtn").hidden=false;
   document.getElementById("clockTz").textContent="LOCAL";
-  document.getElementById("railFoot").innerHTML="Client : "+esc(TEN.name)+"<br>Rôle : "+({admin:"administrateur",editor:"éditeur",viewer:"lecteur"}[ROLE]||ROLE)+"<br>KPI calculés selon les définitions AeroPulse (seuil de ponctualité : 15 min).";
+  document.getElementById("shareBtn").hidden=!(ROLE==="admin"&&!IS_GUEST);
+  document.getElementById("guestChip").hidden=!IS_GUEST;updGuest();
+  document.getElementById("railFoot").innerHTML="Client : "+esc(TEN.name)+"<br>Rôle : "+(IS_GUEST?"invité (lecture seule)":({admin:"administrateur",editor:"éditeur",viewer:"lecteur"}[ROLE]||ROLE))+"<br>KPI calculés selon les définitions AeroPulse (seuil de ponctualité : 15 min).";
 }
 function updFresh(){
   var dot=document.getElementById("freshDot"),lbl=document.getElementById("freshLbl");if(!dot)return;
@@ -994,6 +1007,94 @@ async function runImport(file){
   }catch(e){IMPORT_RESULT={file:file.name,error:frErr(e)};}
   render(true);
 }
+
+/* ---------- accès invités : compte à rebours et bouton « Partager » ---------- */
+function updGuest(){
+  if(!IS_GUEST||!GUEST_EXP)return;var l=document.getElementById("guestLbl");if(!l)return;
+  var m=Math.max(0,Math.ceil((GUEST_EXP-Date.now())/MIN));
+  l.textContent="Invité · "+(m>=60?Math.floor(m/60)+" h "+pad(m%60):m+" min")+(window.innerWidth>760?" restantes":"");
+  l.parentNode.title="Accès invité en lecture seule, jusqu'à "+new Date(GUEST_EXP).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+}
+function guestExpired(){
+  REAL=false;loopStarted=false;GUEST_EXP=null;
+  ["guestChip","shareBtn","freshChip"].forEach(function(id){var e=document.getElementById(id);if(e)e.hidden=true;});
+  main.innerHTML='<div class="panel empty"><h2>Accès de démonstration terminé</h2><p>Votre accès temporaire à AeroPulse a expiré. Merci de votre visite !</p><p>Pour prolonger l\'essai ou obtenir un accès complet, contactez la personne qui vous a transmis cet identifiant.</p></div>';
+  if(SB)SB.auth.signOut();
+}
+var shareModal=document.getElementById("share"),shareBody=document.getElementById("shareBody"),SHARE_LAST=null;
+async function guestApi(payload){
+  var sess=(await SB.auth.getSession()).data.session;
+  var res=await fetch(CFG.supabaseUrl+"/functions/v1/guest-access",{method:"POST",
+    headers:{"Authorization":"Bearer "+(sess?sess.access_token:""),"apikey":CFG.supabaseAnonKey,"Content-Type":"application/json"},
+    body:JSON.stringify(Object.assign({tenant:TEN.id},payload))});
+  var body=await res.json().catch(function(){return{error:"Réponse illisible du serveur ("+res.status+")"};});
+  if(!res.ok||body.error)throw new Error(body.error||("Erreur "+res.status));
+  return body;
+}
+function fmtDT(iso){return new Date(iso).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
+function durLbl(min){return min%60?Math.floor(min/60)+" h "+pad(min%60):(min/60)+" h";}
+function siteUrl(){return location.origin+location.pathname.replace(/index\.html$/,"");}
+function shareText(c){
+  return"Bonjour"+(c.label?" "+c.label:"")+",\n\nVoici votre accès de démonstration à AeroPulse, le tableau de bord des opérations et de la ponctualité :\n\n"+
+    "Adresse : "+siteUrl()+"\nIdentifiant : "+c.username+"\nMot de passe : "+c.password+"\n\n"+
+    "L'accès est valable "+durLbl(c.minutes)+" à partir de votre première connexion, à utiliser avant le "+fmtDT(c.activate_before)+". "+
+    "Il fonctionne sur ordinateur, tablette et téléphone.\n\nBonne découverte !";
+}
+function shareForm(){
+  return'<p>Créez un identifiant et un mot de passe pour un prospect. Il pourra consulter les données de <b>'+esc(TEN.name)+'</b> en lecture seule, sans rien importer ni modifier.</p>'+
+   '<div class="fgrid"><label><span class="label">Nom du prospect (facultatif)</span><input id="shLabel" maxlength="80" placeholder="ex. Air Algérie, M. Benali"></label>'+
+   '<label><span class="label">Durée après la 1re connexion</span><select id="shMin"><option value="120" selected>2 heures</option><option value="240">4 heures</option><option value="1440">24 heures</option></select></label></div>'+
+   '<p style="font-size:12.5px">Le compte à rebours démarre à la première connexion. Un identifiant non utilisé dans les 7 jours ne fonctionne plus.</p>'+
+   '<div class="actions"><button class="btn" id="shCreate" type="button">Créer l\'accès</button></div><span class="err" id="shErr" style="color:var(--bad);font-size:13px"></span>';
+}
+function shareCreds(c){
+  return'<div class="creds" id="shCreds"><dt>Adresse</dt><dd>'+esc(siteUrl())+'</dd><dt>Identifiant</dt><dd id="shUser">'+esc(c.username)+'</dd><dt>Mot de passe</dt><dd id="shPw">'+esc(c.password)+'</dd>'+
+   '<dt>Validité</dt><dd style="font-family:var(--f-body);font-size:13px">'+durLbl(c.minutes)+' après la première connexion, avant le '+esc(fmtDT(c.activate_before))+'</dd>'+
+   '<span class="warn">Notez ou envoyez ce mot de passe maintenant : il ne sera plus affiché ensuite.</span></div>'+
+   '<div class="actions"><button class="btn" id="shCopy" type="button">Copier le message</button>'+(navigator.share?'<button class="btn sec" id="shSend" type="button">Envoyer…</button>':'')+
+   '<button class="btn sec" id="shAgain" type="button">Nouvel accès</button></div><span class="note" id="shCopied" aria-live="polite"></span>';
+}
+function guestList(list){
+  if(!list.length)return'<p>Aucune invitation pour l\'instant.</p>';
+  var cls={"active":"ok","en attente":"air","expirée":""};
+  return'<ul class="glist">'+list.slice(0,30).map(function(g){
+    var info=g.state==="active"?"connecté le "+fmtDT(g.first_login_at)+", jusqu'à "+new Date(g.expires_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):
+      g.state==="en attente"?"pas encore utilisé, valable jusqu'au "+fmtDT(g.activate_before):(g.first_login_at?"utilisé le "+fmtDT(g.first_login_at):"jamais utilisé");
+    return'<li><b>'+esc(g.guest_username)+'</b><span class="s">'+(g.label?esc(g.label)+" · ":"")+esc(info)+'</span><span class="pill '+cls[g.state]+'">'+esc(g.state)+'</span>'+
+      (g.state!=="expirée"?'<button class="chip" data-revoke="'+esc(g.user_id)+'" type="button">Révoquer</button>':'')+'</li>';}).join("")+'</ul>';
+}
+async function renderShare(){
+  shareBody.innerHTML=(SHARE_LAST?shareCreds(SHARE_LAST):shareForm())+'<div><span class="label">Invitations de ce client</span><div id="shList"><p>Chargement…</p></div></div>';
+  try{var r=await guestApi({action:"list"});document.getElementById("shList").innerHTML=guestList(r.guests||[]);}
+  catch(e){var l=document.getElementById("shList");if(l)l.innerHTML='<p style="color:var(--bad)">'+esc(frErr(e))+'</p>';}
+}
+function openShare(){shareModal.hidden=false;SHARE_LAST=null;renderShare().then(function(){var x=document.getElementById("shLabel");if(x)x.focus();});}
+function closeShare(){shareModal.hidden=true;SHARE_LAST=null;shareBody.innerHTML="";}
+document.getElementById("shareBtn").addEventListener("click",openShare);
+document.getElementById("shareClose").addEventListener("click",closeShare);
+shareModal.addEventListener("click",function(e){if(e.target===shareModal)closeShare();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!shareModal.hidden)closeShare();});
+shareBody.addEventListener("click",async function(e){
+  var t=e.target.closest("button");if(!t)return;
+  if(t.id==="shCreate"){
+    t.disabled=true;t.textContent="Création…";var err=document.getElementById("shErr");err.textContent="";
+    try{SHARE_LAST=await guestApi({action:"create",label:document.getElementById("shLabel").value,minutes:+document.getElementById("shMin").value});
+      SHARE_LAST.label=document.getElementById("shLabel").value.trim();await renderShare();}
+    catch(x){err.textContent=frErr(x);t.disabled=false;t.textContent="Créer l'accès";}
+  }else if(t.id==="shCopy"){
+    var txt=shareText(SHARE_LAST),ok=false;
+    try{await navigator.clipboard.writeText(txt);ok=true;}catch(x){
+      var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{ok=document.execCommand("copy");}catch(y){}ta.remove();}
+    document.getElementById("shCopied").textContent=ok?"Message copié : collez-le dans un e-mail, WhatsApp ou SMS.":"Copie impossible : sélectionnez les informations à la main.";
+  }else if(t.id==="shSend"){
+    try{await navigator.share({title:"Accès AeroPulse",text:shareText(SHARE_LAST)});}catch(x){}
+  }else if(t.id==="shAgain"){SHARE_LAST=null;renderShare();}
+  else if(t.dataset.revoke){
+    if(!confirm("Révoquer cet accès ? L'invité sera déconnecté et l'identifiant supprimé."))return;
+    t.disabled=true;
+    try{await guestApi({action:"revoke",user_id:t.dataset.revoke});renderShare();}catch(x){alert(frErr(x));t.disabled=false;}
+  }
+});
 
 boot();
 })();

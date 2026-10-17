@@ -3,7 +3,7 @@
   var FIX = window.__FIX, session = window.__SESSION || null;
   var TABLES = {
     tenants: [FIX.tenant],
-    memberships: [{ tenant_id: FIX.tenant.id, user_id: "u1", role: "editor" }],
+    memberships: [{ tenant_id: FIX.tenant.id, user_id: "u1", role: window.__ROLE || "editor" }],
     delay_codes: FIX.delay, airports: FIX.airports, flights: FIX.flights, metar_latest: FIX.metar
   };
   function builder(table) {
@@ -24,11 +24,12 @@
   window.supabase = { createClient: function () {
     return {
       from: builder,
+      rpc: function (name) { return Promise.resolve(name === "activate_guest" ? { data: window.__GUEST_EXP || null, error: null } : { data: null, error: null }); },
       auth: {
         getSession: function () { return Promise.resolve({ data: { session: session } }); },
         signInWithPassword: function (o) {
           if (o.password !== "bon-mot-de-passe") return Promise.resolve({ data: {}, error: { message: "Invalid login credentials" } });
-          session = { access_token: "jeton", user: { id: "u1", email: o.email } };
+          session = { access_token: "jeton", user: { id: "u1", email: o.email, app_metadata: window.__GUEST_EXP ? { guest: true } : {} } };
           return Promise.resolve({ data: { session: session }, error: null });
         },
         signInWithOtp: function () { return Promise.resolve({ error: null }); },

@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { parseFlightsCsv, splitCsv } from "../supabase/functions/_shared/flights_csv.ts";
 import { decodeMetar, metarRowsFromAwc } from "../supabase/functions/_shared/metar.ts";
 import { adbToFlights, adbAirports, adbTime, localStamp } from "../supabase/functions/_shared/aerodatabox.ts";
+import { makeUsername, makePassword, guestEmail, clampMinutes, clampDays, guestState } from "../supabase/functions/_shared/guest.ts";
 
 const AIRPORTS = { LFPO: "ORY", LFMN: "NCE", LPPT: "LIS", DAAG: "ALG", TFFR: "PTP", LFBO: "TLS", LFML: "MRS", LFKJ: "AJA", LEMD: "MAD", LEBL: "BCN", LIRF: "FCO", DTTA: "TUN", GMMN: "CMN", GMMX: "RAK" };
 const byIata = Object.fromEntries(Object.entries(AIRPORTS).map(([i, a]) => [a, i]));
@@ -128,4 +129,28 @@ test("AeroDataBox : conversion FIDS → vols", () => {
   assert.equal(aps.find((x) => x.icao === "LPPT").tz, "Europe/Lisbon");
   assert.equal(adbTime({ utc: "2026-10-03T05:40:00Z" }), "2026-10-03T05:40:00.000Z");
   assert.equal(localStamp(new Date("2026-10-03T05:40:00Z"), "Europe/Paris"), "2026-10-03T07:40");
+});
+
+test("invités : identifiants et mots de passe générés", () => {
+  const users = new Set(), pws = new Set();
+  for (let i = 0; i < 300; i++) {
+    const u = makeUsername(), p = makePassword();
+    assert.match(u, /^invite-[a-z2-9]{6}$/); assert.doesNotMatch(u, /[01lo]/);
+    assert.match(p, /^[A-Za-z2-9]{4}-[A-Za-z2-9]{4}-[A-Za-z2-9]{4}$/);
+    assert.ok(/[a-z]/.test(p) && /[A-Z]/.test(p) && /[0-9]/.test(p), p);
+    assert.doesNotMatch(p, /[01lIoO]/);
+    users.add(u); pws.add(p);
+  }
+  assert.ok(users.size > 295 && pws.size === 300, "tirages variés");
+  assert.equal(guestEmail("invite-abc234"), "invite-abc234@invite.aeropulse.app");
+});
+
+test("invités : bornes de durée et état d'une invitation", () => {
+  assert.equal(clampMinutes(undefined), 120); assert.equal(clampMinutes(5), 30); assert.equal(clampMinutes(1e9), 43200); assert.equal(clampMinutes("90"), 90);
+  assert.equal(clampDays(null), 7); assert.equal(clampDays(99), 30);
+  const now = Date.parse("2026-10-17T10:00:00Z");
+  assert.equal(guestState({ first_login_at: null, expires_at: null, activate_before: "2026-10-20T00:00:00Z" }, now), "en attente");
+  assert.equal(guestState({ first_login_at: null, expires_at: null, activate_before: "2026-10-16T00:00:00Z" }, now), "expirée");
+  assert.equal(guestState({ first_login_at: "x", expires_at: "2026-10-17T11:00:00Z", activate_before: "2026-10-20T00:00:00Z" }, now), "active");
+  assert.equal(guestState({ first_login_at: "x", expires_at: "2026-10-17T09:59:00Z", activate_before: "2026-10-20T00:00:00Z" }, now), "expirée");
 });

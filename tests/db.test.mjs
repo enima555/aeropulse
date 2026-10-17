@@ -88,3 +88,36 @@ test("sécurité : un lecteur ne peut pas écrire chez son propre client", () =>
 test("sécurité : un visiteur non connecté n'a accès à rien", () => {
   assert.throws(() => sql(`begin; set local role anon; select count(*) from flights; commit;`), /permission denied/);
 });
+
+// ---------- Accès invités (bouton « Partager ») ----------
+const UG = "cccccccc-cccc-cccc-cccc-cccccccccccc", UH = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+test("invité : aucun accès avant la première connexion, 2 h d'accès ensuite, plus rien après expiration", () => {
+  sql(`insert into auth.users (id, email) values (${lit(UG)}, 'invite-test@invite.aeropulse.app') on conflict do nothing;
+       insert into memberships (tenant_id, user_id, role, is_guest, guest_username, activate_before, access_duration)
+       values (${lit(T1)}, ${lit(UG)}, 'viewer', true, 'invite-test', now() + interval '7 days', interval '2 hours');`);
+  assert.equal(sql(`select count(*) from flights`, UG), "0", "pas d'accès avant activation");
+  const exp = sql(`select activate_guest()`, UG);
+  const left = (Date.parse(exp) - Date.now()) / 60000;
+  assert.ok(left > 115 && left <= 121, `expiration dans ~2 h, obtenu ${left} min`);
+  assert.equal(sql(`select count(*) from flights`, UG), "128", "accès en lecture après activation");
+  assert.equal(sql(`select activate_guest()`, UG), exp, "une deuxième connexion ne prolonge pas l'accès");
+  assert.throws(() => sql(`insert into flights (tenant_id, flight_no, ops_date, dep_airport, arr_airport, std) values (${lit(T1)}, 'XX9', '2026-10-02', 'LFPO', 'LFMN', now())`, UG), /row-level security/);
+  assert.equal(sql(`update memberships set expires_at = now() + interval '30 days' where user_id = ${lit(UG)} returning 1`, UG), "", "l'invité ne peut pas prolonger son accès");
+  sql(`update memberships set expires_at = now() - interval '1 minute' where user_id = ${lit(UG)}`);
+  assert.equal(sql(`select count(*) from flights`, UG), "0", "plus d'accès après expiration");
+  assert.equal(sql(`select count(*) from tenants`, UG), "0");
+  assert.equal(sql(`select activate_guest() is null`, UG), "t");
+});
+
+test("invité : un identifiant jamais utilisé avant la date limite ne s'active plus", () => {
+  sql(`insert into auth.users (id, email) values (${lit(UH)}, 'invite-old@invite.aeropulse.app') on conflict do nothing;
+       insert into memberships (tenant_id, user_id, role, is_guest, guest_username, activate_before, access_duration)
+       values (${lit(T1)}, ${lit(UH)}, 'viewer', true, 'invite-old', now() - interval '1 hour', interval '2 hours');`);
+  assert.equal(sql(`select activate_guest() is null`, UH), "t");
+  assert.equal(sql(`select count(*) from flights`, UH), "0");
+});
+
+test("invité : un compte invité est forcément lecteur", () => {
+  assert.throws(() => sql(`insert into memberships (tenant_id, user_id, role, is_guest, activate_before, access_duration)
+    values (${lit(T2)}, ${lit(UG)}, 'admin', true, now() + interval '1 day', interval '2 hours')`), /memberships_guest_viewer/);
+});

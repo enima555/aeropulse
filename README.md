@@ -39,7 +39,7 @@ aviationweather.gov       ─────► ingest-metar   ─┘   + règles d
 |---|---|
 | Projet Supabase | `aeropulse` (`pfkteqdngzmlydueulyj`), région Paris (eu-west-3), offre gratuite |
 | URL de l'API | https://pfkteqdngzmlydueulyj.supabase.co |
-| Fonctions serveur | `ingest-metar`, `sync-flights`, `import-flights`, `seed-airports` |
+| Fonctions serveur | `ingest-metar`, `sync-flights`, `import-flights`, `seed-airports`, `guest-access` |
 | Collectes planifiées | météo toutes les 10 min (`aeropulse-metar`), vols toutes les 3 h de 5 h à 23 h, heure de Paris (`aeropulse-flights`, adapté à l’offre gratuite AeroDataBox ; à resserrer avec une offre payante : `select cron.alter_job(jobid, schedule := '*/10 * * * *') from cron.job where jobname = 'aeropulse-flights';`) |
 | Secrets | dans Supabase Vault : `cron_secret` (généré), `project_url`, `aerodatabox_key` |
 | Site Netlify | `aeropulse-app` → https://aeropulse-app.netlify.app |
@@ -55,6 +55,16 @@ Les secrets ne passent jamais par des variables d'environnement à recopier : le
 4. Créer un utilisateur (Authentication → Users → Add user), puis le rattacher à un client avec `supabase/seed_demo.sql`.
 5. Renseigner `web/config.js` (URL et clé publishable), puis déployer le dossier `web/` sur Netlify.
 6. Dans Authentication → URL Configuration, mettre l'adresse du site comme Site URL (pour les liens de connexion par e-mail).
+
+## Partager un accès de démonstration
+
+Un administrateur du client clique sur **Partager**, en haut de l'écran, pour créer un accès invité pour un prospect :
+- identifiant (`invite-xxxxxx`) et mot de passe générés au hasard, affichés une seule fois, avec un message prêt à copier ou à envoyer ;
+- accès **en lecture seule** aux données du client (rôle `viewer` : pas d'import, pas de modification) ;
+- l'accès démarre à la **première connexion** et dure **2 heures** (ou 4 h ou 24 h, au choix) ; un identifiant non utilisé dans les 7 jours ne fonctionne plus ;
+- l'invité voit un compte à rebours ; à l'expiration, il est déconnecté et ne peut plus lire aucune donnée (contrôle fait par la base, fonction `has_role`) ;
+- la fenêtre de partage liste les invitations (en attente, active, expirée) et permet de les révoquer ;
+- les comptes expirés sont supprimés toutes les heures (tâche `aeropulse-guest-cleanup`, fonction serveur `guest-access`).
 
 ## Données de vol
 
