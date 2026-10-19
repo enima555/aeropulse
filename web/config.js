@@ -4,5 +4,6 @@
 window.AEROPULSE_CONFIG = {
   supabaseUrl: "https://pfkteqdngzmlydueulyj.supabase.co",
   supabaseAnonKey: "sb_publishable_frPPfwlsarY_usJXCjYsZA_gHvy8Ol_",
+  publicUrl: "https://aeropulse-app.netlify.app/",   // adresse communiquée aux invités (message « Partager »)
   allowDemo: true        // affiche « Voir la démo » sur l'écran de connexion
 };

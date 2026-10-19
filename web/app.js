@@ -1033,7 +1033,7 @@ async function guestApi(payload){
 }
 function fmtDT(iso){return new Date(iso).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 function durLbl(min){return min%60?Math.floor(min/60)+" h "+pad(min%60):(min/60)+" h";}
-function siteUrl(){return location.origin+location.pathname.replace(/index\.html$/,"");}
+function siteUrl(){var c=(window.AEROPULSE_CONFIG||{}).publicUrl;if(c&&/^https?:\/\//.test(c))return c.replace(/\/?$/,"/");return location.origin+location.pathname.replace(/index\.html$/,"");}
 function shareText(c){
   return"Bonjour"+(c.label?" "+c.label:"")+",\n\nVoici votre accès de démonstration à AeroPulse, le tableau de bord des opérations et de la ponctualité :\n\n"+
     "Adresse : "+siteUrl()+"\nIdentifiant : "+c.username+"\nMot de passe : "+c.password+"\n\n"+
